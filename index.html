@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>과제 관리 시스템</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    
+</head>
+<body>
+    <!-- 로딩 스피너 -->
+    <div id="loadingSpinner" class="loader" style="display: none;"></div>
+
+    <!-- 초기 화면: 로그인 및 회원가입 선택 -->
+    <section id="welcome">
+        <h1>LOGIN</h1>
+        <form id="login-form">
+            <div>
+                <label for="username" class="sr-only">아이디:</label>
+                <input type="text" id="username" name="username" placeholder="아이디" required>
+            </div>
+            <div>
+                <label for="password" class="sr-only">비밀번호:</label>
+                <input type="password" id="password" name="password" placeholder="패스워드" required>
+            </div>
+            <button type="submit">로그인</button>
+        </form>
+        <div class="options">
+            <a href="#" onclick="showSignup()">회원가입</a>
+            <span>|</span>
+            <a href="#">아이디 찾기</a>
+            <span>|</span>
+            <a href="#">비밀번호 찾기</a>
+        </div>
+    </section>
+
+    <!-- 회원가입 섹션 -->
+    <section id="signup" style="display: none;">
+        <h2>회원가입</h2>
+        <form id="signup-form">
+            <label for="new-username">아이디:</label>
+            <input type="text" id="new-username" name="new-username" required>
+
+            <label for="new-password">비밀번호:</label>
+            <input type="password" id="new-password" name="new-password" required>
+
+            <label for="confirm-password">비밀번호 확인:</label>
+            <input type="password" id="confirm-password" name="confirm-password" required>
+
+            <button type="submit">회원가입</button>
+        </form>
+    </section>
+
+    <!-- 메인 화면 -->
+    <section id="main-content" style="display: none;">
+        <!-- 헤더 -->
+        <header class="header">
+            <!-- 검색 영역 -->
+            <div class="searchArea">
+                <input type="search" id="task-search" placeholder="과제 검색">
+                <button onclick="searchTasks()">검색</button>
+            </div>
+            <!-- 메뉴 -->
+            <nav>
+                <ul class="nav">
+                    <li><a href="#" onclick="showMainContent()">홈</a></li>
+                    <li><a href="#" onclick="showTimetable()">시간표 보기</a></li>
+                    <li><a href="#" onclick="logout()">로그아웃</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- 대시보드 -->
+        <section id="dashboard">
+            <h2>대시보드</h2>
+            <div id="task-summary">
+                <div>
+                    <p><strong>진행 중 과제</strong></p>
+                    <span class="count" id="pending-count">0</span>
+                </div>
+                <div>
+                    <p><strong>완료된 과제</strong></p>
+                    <span class="count" id="completed-count">0</span>
+                </div>
+            </div>
+            <ul id="task-list">
+                <!-- 동적으로 과제가 표시됩니다 -->
+            </ul>
+        </section>
+
+        <!-- 과제 추가 폼 -->
+        <section id="add-task-form">
+            <h3>과제 추가</h3>
+            <form id="task-form">
+                <label for="task-title">과제 제목:</label>
+                <input type="text" id="task-title" placeholder="과제 제목을 입력하세요" required>
+
+                <label for="task-desc">과제 설명:</label>
+                <textarea id="task-desc" placeholder="과제 설명을 입력하세요" required></textarea>
+
+                <label for="task-deadline">마감일:</label>
+                <input type="date" id="task-deadline" required>
+
+                <button type="submit">추가</button>
+            </form>
+        </section>
+
+        <!-- 완료된 과제 보기 -->
+        <section id="completed-tasks">
+            <h3>완료된 과제</h3>
+            <ul id="completed-task-list">
+                <!-- 동적으로 완료된 과제가 표시됩니다 -->
+            </ul>
+        </section>
+    </section>
+
+
+
+        <!-- 캘린더 섹션 -->
+        <section id="calendar-section" style="display: none;">
+            <h3>일정 캘린더</h3>
+            <div id="calendar"></div>
+        </section>
+
+    
+    <section id="timetable" style="display: none;">
+        <div>
+            <h3 class="timetable-title">대학교 시간표</h3>
+            <table id="timetable-table">
+                <thead>
+                    <tr>
+                        <th>시간</th>
+                        <th>월</th>
+                        <th>화</th>
+                        <th>수</th>
+                        <th>목</th>
+                        <th>금</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 동적으로 시간표가 생성됩니다 -->
+                </tbody>
+            </table>
+        <!-- 버튼을 감싸는 중앙 정렬된 div -->
+        <div class="back-to-dashboard-container">
+            <button id="back-to-dashboard" onclick="showMainContent()">대시보드로 돌아가기</button>
+        </div>
+    </section>
+    
+    
+    
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div>© 2024 과제 관리 시스템. 모든 권리 보유.</div>
+    </footer>
+
+
+    <script>
+        let calendar; // 캘린더 변수
+        let tasks = [];
+        let currentUser = null;
+        let timetableData = [];
+        // 시간표 초기화 함수
+        function initTimetable() {
+            timetableData = [];
+            for (let hour = 9; hour <= 17; hour++) {
+                timetableData.push({
+                    time: `${hour.toString().padStart(2, "0")}:00 - ${(hour + 1).toString().padStart(2, "0")}:00`,
+                    mon: "", tue: "", wed: "", thu: "", fri: ""
+                });
+            }
+        }
+
+        // 시간표 표시 함수
+        function showTimetable() {
+            // timetableData가 초기화되지 않았다면 초기화
+            if (!timetableData || timetableData.length === 0) {
+                initTimetable();
+            }
+
+            const timetableTable = document.querySelector("#timetable-table tbody");
+            timetableTable.innerHTML = ""; // 기존 데이터 초기화
+
+            // 시간표 테이블 동적 생성
+            timetableData.forEach((row, index) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${row.time}</td>
+                    <td contenteditable="true" oninput="updateTimetable(${index}, 'mon', this.innerText)">${row.mon}</td>
+                    <td contenteditable="true" oninput="updateTimetable(${index}, 'tue', this.innerText)">${row.tue}</td>
+                    <td contenteditable="true" oninput="updateTimetable(${index}, 'wed', this.innerText)">${row.wed}</td>
+                    <td contenteditable="true" oninput="updateTimetable(${index}, 'thu', this.innerText)">${row.thu}</td>
+                    <td contenteditable="true" oninput="updateTimetable(${index}, 'fri', this.innerText)">${row.fri}</td>
+                `;
+                timetableTable.appendChild(tr);
+            });
+
+            // 섹션 표시 전환
+            document.getElementById("timetable").style.display = "block"; // 시간표 보이기
+            document.getElementById("main-content").style.display = "none"; // 대시보드 숨기기
+            document.getElementById('calendar-section').style.display = 'none'; // 캘린더 숨김
+        }
+
+
+        // 시간표 업데이트 함수 (내용 입력 시 저장)
+        function updateTimetable(index, day, value) {
+            timetableData[index][day] = value;
+            saveUserData();
+        }
+
+        // 사용자 데이터 저장 (시간표와 과제 모두 저장)
+        function saveUserData() {
+            if (currentUser) {
+                const userData = JSON.parse(localStorage.getItem(currentUser)) || {};
+                userData.tasks = tasks;
+                userData.timetable = timetableData; // 시간표 저장
+                localStorage.setItem(currentUser, JSON.stringify(userData));
+            }
+        }
+
+        // 화면 전환
+        function showLogin() {
+            document.getElementById('welcome').style.display = 'block';
+            document.getElementById('signup').style.display = 'none';
+            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('timetable').style.display = 'none';
+        }
+
+        function showSignup() {
+            document.getElementById('welcome').style.display = 'none';
+            document.getElementById('signup').style.display = 'block';
+        }
+
+        function showMainContent() {
+            // 로그인 및 시간표 섹션 숨기기
+            document.getElementById('welcome').style.display = 'none';
+            document.getElementById('signup').style.display = 'none';
+            document.getElementById("timetable").style.display = "none";
+
+            // 대시보드 표시
+            document.getElementById('main-content').style.display = 'block';
+            
+            // 캘린더 섹션 표시
+            document.getElementById('calendar-section').style.display = 'block';
+
+            // 캘린더 초기화
+            initializeCalendar();
+            refreshCalendarEvents(); // 과제 이벤트 새로고침
+        }
+        
+        // FullCalendar 초기화 함수
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                events: [], // 초기 이벤트는 빈 배열
+                editable: true,
+                eventClick: function(info) {
+                    alert('과제: ' + info.event.title + '\n마감일: ' + info.event.start.toISOString());
+                }
+            });
+            calendar.render();
+        }
+
+
+        // 회원가입 처리
+        document.getElementById('signup-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+
+            if (password !== confirmPassword) {
+                alert('비밀번호가 일치하지 않습니다.');
+                return;
+            }
+
+            if (localStorage.getItem(username)) {
+                alert('이미 존재하는 아이디입니다.');
+                return;
+            }
+
+            localStorage.setItem(username, JSON.stringify({ password: password, tasks: [] }));
+            alert('회원가입 성공!');
+            showLogin();
+        });
+
+        // 로그인 시 사용자 데이터 불러오기
+        document.getElementById('login-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const userData = JSON.parse(localStorage.getItem(username));
+            if (userData && userData.password === password) {
+                currentUser = username;
+                tasks = userData.tasks || [];
+                timetableData = userData.timetable || initTimetable();
+                showMainContent();
+                updateTaskList();
+            } else {
+                alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+            }
+        });
+
+        // 로그아웃 처리
+        function logout() {
+            currentUser = null;
+            tasks = [];
+            timetableData = [];
+            
+            // 모든 섹션 숨기기
+            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('calendar-section').style.display = 'none'; // 캘린더 숨김
+            document.getElementById('timetable').style.display = 'none';
+            
+            showLogin(); // 로그인 화면 표시
+        }
+
+
+        function saveTasks() {
+            const userData = JSON.parse(localStorage.getItem(currentUser));
+            userData.tasks = tasks;
+            localStorage.setItem(currentUser, JSON.stringify(userData));
+        }
+        // 과제 추가 함수
+        document.getElementById('task-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const title = document.getElementById('task-title').value;
+            const desc = document.getElementById('task-desc').value;
+            const deadline = document.getElementById('task-deadline').value;
+
+            // 새로운 과제 객체 생성
+            const newTask = {
+                id: Date.now(),
+                title: title,
+                desc: desc,
+                deadline: deadline,
+                completed: false
+            };
+            tasks.push(newTask); // 과제 목록에 추가
+            saveUserData(); // 사용자 데이터 저장
+
+            // 캘린더에 이벤트 추가
+            addTaskToCalendar(newTask);
+            updateTaskList(); // 과제 목록 업데이트
+        });
+
+        // 캘린더에 과제를 추가하는 함수
+        function addTaskToCalendar(task) {
+            calendar.addEvent({
+                id: task.id,
+                title: task.title + (task.completed ? ' (완료)' : ' (진행 중)'),
+                start: task.deadline,
+                color: task.completed ? 'green' : 'blue', // 상태에 따라 색상 설정
+                textColor: 'white'
+            });
+        }
+
+        // 캘린더 이벤트 새로고침 함수
+        function refreshCalendarEvents() {
+            calendar.getEvents().forEach(event => event.remove()); // 기존 이벤트 삭제
+            tasks.forEach(task => addTaskToCalendar(task)); // 과제 목록을 바탕으로 이벤트 다시 추가
+        }
+
+        // 검색된 과제만 리스트에 표시
+        function updateTaskList(filteredTasks = tasks) {
+            const taskList = document.getElementById('task-list');
+            const completedList = document.getElementById('completed-task-list');
+            taskList.innerHTML = '';
+            completedList.innerHTML = '';
+            
+            filteredTasks.forEach(task => {
+                const taskItem = `
+                    <li>
+                        <div>
+                            <strong>${task.title}</strong> - ${task.deadline}
+                        </div>
+                        ${task.completed ? '' : `
+                        <button class="task-button complete" onclick="markAsCompleted(${task.id})">완료</button>`}
+                        <button class="task-button delete" onclick="deleteTask(${task.id})">삭제</button>
+                    </li>`;
+                if (task.completed) completedList.innerHTML += taskItem;
+                else taskList.innerHTML += taskItem;
+            });
+            updateSummary(); // 요약 카운트 업데이트
+        }
+
+
+        // 과제 완료 처리 함수
+        function markAsCompleted(taskId) {
+            tasks = tasks.map(task => {
+                if (task.id === taskId) {
+                    task.completed = true;
+                    return task;
+                }
+                return task;
+            });
+            saveUserData();
+            refreshCalendarEvents();
+            updateTaskList();
+        }
+        // 캘린더 이벤트 새로고침 함수
+        function refreshCalendarEvents() {
+            calendar.getEvents().forEach(event => event.remove()); // 기존 이벤트 삭제
+            tasks.forEach(task => addTaskToCalendar(task)); // 과제 목록을 바탕으로 이벤트 다시 추가
+        }
+
+
+        // 과제 삭제 함수
+        function deleteTask(taskId) {
+            // 과제 삭제
+            tasks = tasks.filter(task => task.id !== taskId);
+            saveTasks(); // 사용자 데이터 저장
+
+            // 캘린더에서 해당 과제 이벤트 삭제
+            const calendarEvent = calendar.getEventById(taskId.toString()); // 이벤트 ID 가져오기
+            if (calendarEvent) {
+                calendarEvent.remove(); // 캘린더 이벤트 삭제
+            }
+
+            updateTaskList(); // 화면 업데이트
+        }
+
+
+        showLogin();
+
+        // 대시보드 요약 업데이트
+        function updateSummary() {
+            const pendingCount = tasks.filter(task => !task.completed).length;
+            const completedCount = tasks.filter(task => task.completed).length;
+
+            document.getElementById('pending-count').innerText = pendingCount;
+            document.getElementById('completed-count').innerText = completedCount;
+
+            const completedTaskList = document.getElementById('completed-task-list');
+            completedTaskList.innerHTML = '';
+
+            tasks.filter(task => task.completed).forEach(task => {
+                const taskItem = document.createElement('li');
+                taskItem.innerHTML = `
+                    <div>
+                        <strong>${task.title}</strong>
+                        <p>${task.desc}</p>
+                        <p>마감일: ${task.deadline}</p>
+                    </div>
+                        <button class="task-button delete" onclick="deleteTask(${task.id})">삭제</button>
+                `;
+                completedTaskList.appendChild(taskItem);
+            });
+        }
+        // 캘린더 생성 함수
+        function renderCalendar() {
+            const calendarEl = document.getElementById('calendar');
+
+            if (calendarEl.innerHTML === '') { // 캘린더가 이미 그려져 있다면 중복 생성 방지
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    locale: 'ko',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek'
+                    },
+                    events: [
+                        // 시간표 이벤트 추가
+                        ...timetableData.map(row => ({
+                            title: '수업',
+                            start: `2024-06-01T${row.time.split(' - ')[0]}`, // 예시 날짜 및 시간
+                            description: `${row.mon || row.tue || row.wed || row.thu || row.fri}`
+                        })),
+                        // 과제 마감일 이벤트 추가
+                        ...tasks.map(task => ({
+                            title: task.title,
+                            start: task.deadline,
+                            description: '과제 마감일'
+                        }))
+                    ],
+                    eventClick: function(info) {
+                        alert(`상세 내용: ${info.event.title}\n날짜: ${info.event.start.toISOString().slice(0, 10)}`);
+                    }
+                });
+                calendar.render();
+            }
+        }
+        // 과제 검색 함수
+        function searchTasks() {
+            const searchInput = document.getElementById('task-search').value.trim().toLowerCase();
+            
+            // 검색어가 비어있을 때 처리
+            if (!searchInput) {
+                alert("검색어를 입력하세요.");
+                return;
+            }
+
+            // 필터링된 과제 목록
+            const filteredTasks = tasks.filter(task =>
+                task.title.toLowerCase().includes(searchInput) ||
+                task.desc.toLowerCase().includes(searchInput)
+            );
+
+            if (filteredTasks.length === 0) {
+                alert("검색 결과가 없습니다.");
+                return;
+            }
+
+            // 필터링된 과제 표시 및 하이라이트
+            updateTaskListWithHighlight(filteredTasks, searchInput);
+        }
+
+        // 하이라이트 처리 및 리스트 업데이트
+        function updateTaskListWithHighlight(filteredTasks, searchInput) {
+            const taskList = document.getElementById('task-list');
+            const completedList = document.getElementById('completed-task-list');
+            taskList.innerHTML = '';
+            completedList.innerHTML = '';
+
+            filteredTasks.forEach(task => {
+                const highlightedTitle = highlightText(task.title, searchInput);
+                const highlightedDesc = highlightText(task.desc, searchInput);
+
+                const taskItem = `
+                    <li>
+                        <div>
+                            <strong>${highlightedTitle}</strong>
+                            <p>${highlightedDesc}</p>
+                            <p>마감일: ${task.deadline}</p>
+                        </div>
+                        ${task.completed ? '' : `
+                        <button class="task-button complete" onclick="markAsCompleted(${task.id})">완료</button>`}
+                        <button class="task-button delete" onclick="deleteTask(${task.id})">삭제</button>
+                    </li>`;
+                
+                if (task.completed) completedList.innerHTML += taskItem;
+                else taskList.innerHTML += taskItem;
+            });
+        }
+
+        // 검색어와 일치하는 부분 하이라이트 처리 함수
+        function highlightText(text, searchInput) {
+            const regex = new RegExp(`(${searchInput})`, "gi"); // 대소문자 무시
+            return text.replace(regex, "<span style='background-color: yellow;'>$1</span>");
+        }
+
+        // 초기화 시 로그인 화면 표시
+        showLogin();
+    </script>
+</body>
+</html>
