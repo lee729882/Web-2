@@ -11,7 +11,7 @@
 <br/>
 
 ## 📸 프로젝트 시연 (Demo)
-![Uploading image.png…]()
+<img width="1871" height="1725" alt="image" src="https://github.com/user-attachments/assets/534c5512-11f2-45bd-84c9-98be52d1e62c" />
 
 <br/>
 
